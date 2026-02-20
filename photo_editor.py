@@ -7,6 +7,7 @@ photo_editor.py — Production-ready CLI для массовой обработ�
   • Crop по центру
   • Конвертация формата (JPEG, PNG, WebP)
   • Настройка качества сжатия
+  • Кастомное именование выходных файлов (--name)
 """
 
 from __future__ import annotations
@@ -109,10 +110,12 @@ def process_image(
     out_format: Optional[str] = None,
     quality: int = DEFAULT_QUALITY,
     do_crop_center: bool = False,
+    custom_name: Optional[str] = None,
 ) -> Path:
     """
     Обрабатывает одно изображение и сохраняет результат в dst_dir.
 
+    Если custom_name задано, файл сохраняется с этим именем (например, "logo-1").
     Возвращает путь к сохранённому файлу.
     """
     img = Image.open(src)
@@ -142,8 +145,8 @@ def process_image(
     img = ensure_rgb(img, pil_format)
 
     # --- Сохранение ---
-    out_name = src.stem + ext
-    out_path = dst_dir / out_name
+    out_stem = custom_name if custom_name else src.stem
+    out_path = dst_dir / (out_stem + ext)
     save_kwargs: dict = {"quality": quality}
     if pil_format == "WEBP":
         save_kwargs["method"] = 4  # баланс скорость/качество
@@ -162,6 +165,7 @@ def build_parser() -> argparse.ArgumentParser:
 Примеры:
   photo_editor -i ./photos --max-side 1200 --format webp --quality 80
   photo_editor -i ./raw -o ./processed --width 800 --height 600 --crop-center --format jpeg
+  photo_editor -i ./photos -o ./icons --name logo --format png
 
 Если --output не указан, результат сохраняется в папку {input}_processed.
 """,
@@ -187,6 +191,8 @@ def build_parser() -> argparse.ArgumentParser:
                    help=f"Качество сжатия 0-100 (по умолчанию {DEFAULT_QUALITY})")
     p.add_argument("--crop-center", action="store_true",
                    help="Обрезать по центру до --width × --height после resize")
+    p.add_argument("-n", "--name", dest="custom_name", default=None,
+                   help="Базовое имя для выходных файлов (например: logo → logo-1, logo-2, …)")
 
     return p
 
@@ -228,6 +234,9 @@ def main() -> None:
     t0 = time.perf_counter()
 
     for idx, src in enumerate(images, start=1):
+        # Генерируем кастомное имя: name-1, name-2, …
+        custom_name = f"{args.custom_name}-{idx}" if args.custom_name else None
+
         try:
             out = process_image(
                 src,
@@ -238,6 +247,7 @@ def main() -> None:
                 out_format=args.out_format,
                 quality=args.quality,
                 do_crop_center=args.crop_center,
+                custom_name=custom_name,
             )
             print(f"  [{idx}/{total}] ✔ {src.name} → {out.name}")
             success += 1

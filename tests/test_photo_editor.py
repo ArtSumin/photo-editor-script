@@ -271,6 +271,21 @@ class TestProcessImage:
         out = process_image(src, output_dir)
         assert out.stem == "landscape"
 
+    def test_custom_name(self, test_images_dir, output_dir):
+        """custom_name переопределяет имя выходного файла."""
+        src = test_images_dir / "landscape.jpg"
+        out = process_image(src, output_dir, custom_name="logo-1")
+        assert out.stem == "logo-1"
+        assert out.exists()
+
+    def test_custom_name_with_format(self, test_images_dir, output_dir):
+        """custom_name + out_format корректно работают вместе."""
+        src = test_images_dir / "landscape.jpg"
+        out = process_image(src, output_dir, custom_name="icon-5", out_format="webp")
+        assert out.stem == "icon-5"
+        assert out.suffix == ".webp"
+        assert out.exists()
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 #  E2E тест: полный CLI
@@ -353,6 +368,27 @@ class TestCLI:
         )
         assert result.returncode == 0
         assert out.is_dir()
+
+    def test_cli_custom_name(self, test_images_dir, output_dir):
+        """CLI с --name logo генерирует файлы logo-1, logo-2, …"""
+        result = subprocess.run(
+            [
+                sys.executable, self.SCRIPT,
+                "--input", str(test_images_dir),
+                "--output", str(output_dir),
+                "--name", "logo",
+                "--format", "png",
+            ],
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0
+        assert "✅ Готово" in result.stdout
+        png_files = sorted(output_dir.glob("logo-*.png"))
+        assert len(png_files) > 0
+        # Проверяем что именование корректно: logo-1.png, logo-2.png, …
+        stems = {p.stem for p in png_files}
+        assert "logo-1" in stems
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
