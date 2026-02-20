@@ -75,12 +75,19 @@ def ensure_rgb(img: Image.Image) -> Image.Image:
 
 def process_image(src: Path, dst_dir: Path, custom_name: str) -> Path:
     """Обрабатывает одно изображение с пресетными параметрами."""
-    img = Image.open(src)
-    img = fit_and_crop(img, WIDTH, HEIGHT)
+    original_img = Image.open(src)
+    icc = original_img.info.get("icc_profile")
+
+    img = fit_and_crop(original_img, WIDTH, HEIGHT)
     img = ensure_rgb(img)
 
     out_path = dst_dir / (custom_name + FORMAT_EXT)
-    img.save(out_path, format=FORMAT, quality=QUALITY, method=6, lossless=True)
+    
+    save_kwargs = {"format": FORMAT, "quality": QUALITY, "method": 4}
+    if icc:
+        save_kwargs["icc_profile"] = icc
+
+    img.save(out_path, **save_kwargs)
     return out_path
 
 

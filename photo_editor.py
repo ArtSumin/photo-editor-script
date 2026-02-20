@@ -119,6 +119,7 @@ def process_image(
     Возвращает путь к сохранённому файлу.
     """
     img = Image.open(src)
+    icc = img.info.get("icc_profile")
 
     # --- Resize ---
     needs_resize = any(v is not None for v in (width, height, max_side))
@@ -150,6 +151,8 @@ def process_image(
     save_kwargs: dict = {"quality": quality}
     if pil_format == "WEBP":
         save_kwargs["method"] = 4  # баланс скорость/качество
+    if icc:
+        save_kwargs["icc_profile"] = icc
     img.save(out_path, format=pil_format, **save_kwargs)
     return out_path
 
